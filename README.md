@@ -34,3 +34,6 @@ Base URL during development: `http://localhost:3000`
 - Payment submissions and verification status live in Supabase so the
   secretariat sees the same data as members. The dashboard still keeps a local
   copy for instant rendering and uploads older local-only payments once.
+
+If the database isnt working go to backend/sql
+- Copy the schema.sql into supabase sql editor to automatically generate the tables
