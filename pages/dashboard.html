@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Member dashboard for the 3rd Eagles Mindanao Convention — check your orders, track your payment status, and update your payment details.">
+    <title>Member Dashboard | 3rd Eagles Mindanao Convention</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23d4a017'/%3E%3Cpath fill='%231b2a4a' d='M16 5l2.6 5.6 6 .7-4.5 4.2 1.2 5.9L16 18.6l-5.3 2.8 1.2-5.9-4.5-4.2 6-.7L16 5z'/%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/dashboard.css">
+</head>
+<body>
+
+    <!-- ══════════ TOP BAR ══════════ -->
+    <header class="dash-topbar no-print">
+        <a href="dashboard.html" class="dash-logo" aria-label="Back to home">
+            <svg class="dash-logo-mark" viewBox="0 0 48 48" role="img" aria-label="Eagles Mindanao star emblem">
+                <circle cx="24" cy="24" r="23" fill="#d4a017" stroke="#1b2a4a" stroke-width="2"/>
+                <path fill="#1b2a4a" d="M24 8l4.4 9.5 10.2 1.2-7.6 6.9 2 10L24 31.7l-9 4.9 2-10-7.6-6.9 10.2-1.2L24 8z"/>
+            </svg>
+            <span class="dash-logo-text">
+                <span class="dash-logo-title">Eagle&nbsp;Convention</span>
+                <span class="dash-logo-sub">Member Dashboard</span>
+            </span>
+        </a>
+        <div class="dash-topbar-actions">
+            <button type="button" class="btn btn-ghost-light btn-sm" id="printSummaryBtn">Print Summary</button>
+            <button type="button" class="btn btn-ghost-light btn-sm" id="signOutBtn">Sign Out</button>
+        </div>
+    </header>
+
+    <main class="dash-shell">
+
+        <!-- ══════════ SIGNED-OUT STATE ══════════ -->
+        <section class="signed-out is-hidden" id="signedOutPanel" aria-labelledby="signedOutTitle">
+            <div class="signed-out-card">
+                <svg class="signed-out-emblem" viewBox="0 0 48 48" aria-hidden="true">
+                    <circle cx="24" cy="24" r="23" fill="#d4a017" stroke="#1b2a4a" stroke-width="2"/>
+                    <path fill="#1b2a4a" d="M24 8l4.4 9.5 10.2 1.2-7.6 6.9 2 10L24 31.7l-9 4.9 2-10-7.6-6.9 10.2-1.2L24 8z"/>
+                </svg>
+                <h1 id="signedOutTitle">You're not signed in</h1>
+                <p>Sign in with your reference number to see your orders, status and payment.</p>
+                <a href="login.html" class="btn btn-primary btn-lg">Go to Member Login</a>
+            </div>
+        </section>
+
+        <!-- ══════════ DASHBOARD ══════════ -->
+        <div id="dashContent" class="is-hidden">
+
+            <!-- Welcome / member identity -->
+            <section class="welcome-card" aria-labelledby="welcomeTitle">
+                <div class="welcome-avatar" id="welcomeAvatar" aria-hidden="true">JD</div>
+                <div class="welcome-meta">
+                    <span class="welcome-eyebrow">Member Dashboard</span>
+                    <h1 class="welcome-title" id="welcomeTitle">Welcome, <span id="welcomeFirstName">Member</span>!</h1>
+                    <ul class="welcome-chips">
+                        <li class="chip" id="chipRegion">—</li>
+                        <li class="chip" id="chipContact">—</li>
+                        <li class="chip chip-muted" id="chipRegistered">Registered —</li>
+                    </ul>
+                </div>
+                <div class="welcome-ref" aria-label="Your member reference">
+                    <span class="welcome-ref-label">Member Reference</span>
+                    <div class="welcome-ref-row">
+                        <code class="welcome-ref-code" id="memberReference">EMC-0000-0000</code>
+                        <button type="button" class="copy-btn no-print" id="copyRefBtn" aria-label="Copy reference number">Copy</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Status timeline -->
+            <section class="panel timeline-panel" aria-labelledby="statusTitle">
+                <div class="panel-head">
+                    <div class="panel-head-text">
+                        <h2 id="statusTitle">Order Status</h2>
+                        <p class="panel-sub">Track your registration, payment and verification.</p>
+                    </div>
+                    <span class="panel-pill" id="timelinePill">Not yet paid</span>
+                </div>
+                <ol class="timeline" id="paymentTimeline"></ol>
+            </section>
+
+            <!-- Overview stats -->
+            <section class="stats-grid no-print" aria-label="Account overview">
+                <div class="stat-card">
+                    <span class="stat-label">Orders</span>
+                    <strong class="stat-value" id="statOrders">0</strong>
+                    <span class="stat-sub">registration &amp; t-shirt</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Amount Due</span>
+                    <strong class="stat-value" id="statAmountDue">₱0</strong>
+                    <span class="stat-sub" id="statAmountSub">pending payment</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Payment Status</span>
+                    <span class="status-pill status-pending" id="statPaymentStatus">Pending Payment</span>
+                    <span class="stat-sub">secretariat verifies on-site</span>
+                </div>
+            </section>
+
+            <!-- Orders + payment grid -->
+            <div class="dash-grid">
+
+                <!-- Orders -->
+                <section class="panel orders-panel" aria-labelledby="ordersTitle">
+                    <div class="panel-head">
+                        <h2 id="ordersTitle">My Orders</h2>
+                        <span class="panel-pill" id="orderCountPill">0 orders</span>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table class="orders-table" id="ordersTable">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Order No.</th>
+                                    <th scope="col">Item</th>
+                                    <th scope="col" class="col-qty">Qty</th>
+                                    <th scope="col" class="col-total">Total</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col" class="col-actions">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ordersTableBody"></tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="3">Total</td>
+                                    <td class="col-total" id="ordersGrandTotal">₱0</td>
+                                    <td colspan="2"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <p class="orders-footnote">Order prices: <strong>₱1,500</strong> convention fee · <strong>₱350</strong>/shirt. Adjust in <code>js/dashboard.js</code> (<code>FEES</code>) if rates change.</p>
+                </section>
+
+                <!-- Update payment -->
+                <aside class="panel payment-panel no-print" aria-labelledby="paymentTitle">
+                    <div class="panel-head">
+                        <div class="panel-head-text">
+                            <h2 id="paymentTitle">Update Payment</h2>
+                            <p class="panel-sub" id="paymentLead">One payment covers all your orders. Submit your payment details and they will be marked <em>submitted for verification</em>.</p>
+                        </div>
+                    </div>
+
+                    <form id="paymentForm" class="payment-form" novalidate>
+                        <div class="payment-fields">
+                            <div class="form-field">
+                                <label for="paymentMethod">Payment Method</label>
+                                <select id="paymentMethod" name="paymentMethod" required>
+                                    <option value="" selected disabled>Choose a method…</option>
+                                    <option value="GCash">GCash</option>
+                                    <option value="Bank Transfer">Bank Transfer</option>
+                                    <option value="Cash">Cash (at the Convention)</option>
+                                </select>
+                                <p class="field-error" data-error-for="paymentMethod" role="alert"></p>
+                            </div>
+
+                            <div class="form-field" id="txnRefField">
+                                <label for="txnRef">Transaction Reference No.</label>
+                                <input type="text" id="txnRef" name="txnRef" placeholder="e.g. 1234567890 (GCash) / TR-000123 (Bank)" maxlength="40" autocomplete="off" spellcheck="false">
+                                <p class="field-hint">Not needed for cash payments.</p>
+                                <p class="field-error" data-error-for="txnRef" role="alert"></p>
+                            </div>
+
+                            <div class="form-field">
+                                <label for="txnDate">Date of Payment</label>
+                                <input type="date" id="txnDate" name="txnDate" required>
+                                <p class="field-error" data-error-for="txnDate" role="alert"></p>
+                            </div>
+
+                            <div class="form-field">
+                                <label for="paymentAmount">Amount</label>
+                                <input type="text" id="paymentAmount" readonly aria-readonly="true">
+                            </div>
+
+                            <div class="form-field payment-receipt-field">
+                                <span class="field-label" id="receiptLabel">Receipt / Screenshot <em class="optional">(optional)</em></span>
+                                <label class="receipt-drop" id="receiptDrop" for="receiptImage"
+                                       aria-labelledby="receiptLabel" aria-describedby="receiptHint">
+                                    <input type="file" id="receiptImage" name="receiptImage" accept="image/*" class="visually-hidden">
+                                    <span class="receipt-drop-inner" id="receiptDropInner">
+                                        <span class="receipt-drop-icon" aria-hidden="true">📷</span>
+                                        <span class="receipt-drop-text"><strong>Choose</strong> or drop a receipt image here</span>
+                                        <span class="receipt-drop-sub">GCash / bank / OTC confirmation</span>
+                                    </span>
+                                </label>
+                                <p class="field-hint" id="receiptHint">Stored on this device only · ~300 KB max.</p>
+                                <p class="field-error" id="receiptError" role="alert"></p>
+                            </div>
+                        </div>
+
+                        <div class="receipt-current is-hidden" id="receiptCurrent">
+                            <span class="receipt-current-label">Saved receipt</span>
+                            <img class="receipt-thumb" id="receiptThumb" alt="Saved payment receipt">
+                            <a class="receipt-view" id="receiptView" target="_blank" rel="noopener">View full size</a>
+                            <button type="button" class="receipt-remove" id="receiptRemoveBtn">Remove</button>
+                        </div>
+
+                        <div class="payment-footer">
+                            <p class="payment-note">Payment is <strong>not final</strong> until the secretariat verifies it. Bring your receipt or reference number on convention day.</p>
+                            <button type="submit" class="btn btn-primary btn-lg" id="paymentSubmitBtn">
+                                Save Payment Details
+                            </button>
+                        </div>
+                    </form>
+                </aside>
+            </div>
+
+            <!-- Empty state (no orders found) -->
+            <section class="empty-state is-hidden" id="emptyState" aria-labelledby="emptyTitle">
+                <svg class="empty-emblem" viewBox="0 0 48 48" aria-hidden="true">
+                    <circle cx="24" cy="24" r="23" fill="none" stroke="#d4a017" stroke-width="3" stroke-dasharray="5 5"/>
+                    <path fill="#d4a017" d="M24 10l3.6 7.8 8.3 1-6 5.7 1.6 8.2L24 30.5l-7.5 4 1.6-8.2-6-5.7 8.3-1L24 10z"/>
+                </svg>
+                <h2 id="emptyTitle">No orders on this device yet</h2>
+                <p>We couldn't find a registration linked to your session. If you just registered, you're all set — orders will appear here automatically. Otherwise you can register now, or preview the dashboard with sample data.</p>
+                <div class="empty-actions no-print">
+                    <a href="../index.html#home" class="btn btn-primary">Register Now</a>
+                    <button type="button" class="btn btn-ghost-dark" id="seedDemoBtn">Preview with Sample Data</button>
+                </div>
+            </section>
+            <button type="button" class="link-danger is-hidden no-print" id="clearDemoBtn">Remove sample data</button>
+
+        </div>
+    </main>
+
+    <!-- ══════════ REMOVE ORDER DIALOG ══════════ -->
+    <dialog class="dash-dialog no-print" id="deleteOrderDialog" aria-labelledby="deleteOrderTitle">
+        <div class="dash-dialog-card">
+            <span class="dash-dialog-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18"></path>
+                    <path d="M8 6V4h8v2"></path>
+                    <path d="M19 6l-1 14H6L5 6"></path>
+                    <path d="M10 11v5"></path>
+                    <path d="M14 11v5"></path>
+                </svg>
+            </span>
+            <h2 class="dash-dialog-title" id="deleteOrderTitle">Remove this order?</h2>
+            <p class="dash-dialog-text" id="deleteOrderText"></p>
+            <p class="dash-dialog-note">This cancels the reservation and can't be undone.</p>
+            <p class="dash-dialog-error is-hidden" id="deleteOrderError" role="alert"></p>
+            <div class="dash-dialog-actions">
+                <button type="button" class="btn btn-ghost-dark" id="cancelDeleteBtn">Keep order</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Remove order</button>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- ══════════ TOAST ══════════ -->
+    <div class="toast no-print" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+    <script src="../js/api.js" defer></script>
+    <script src="../js/dashboard.js" defer></script>
+</body>
+</html>
