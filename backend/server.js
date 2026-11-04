@@ -3,6 +3,8 @@ import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
 
+import { adminRoutes } from './routes/adminRoutes.js'
+import { paymentRoutes } from './routes/paymentRoutes.js'
 import { shirtRoutes } from './routes/shirtRoutes.js'
 import { userRoutes } from './routes/userRoutes.js'
 import { ensureSchema } from './sql/ensureSchema.js'
@@ -26,6 +28,8 @@ app.get('/api/health', (req, res) => {
 /* ── API routes ───────────────────────────────────────────── */
 app.use('/api/users', userRoutes)
 app.use('/api/shirts', shirtRoutes)
+app.use('/api/payments', paymentRoutes)
+app.use('/api/admin', adminRoutes)
 
 /* ── 404 handler ──────────────────────────────────────────── */
 app.use((req, res) => {

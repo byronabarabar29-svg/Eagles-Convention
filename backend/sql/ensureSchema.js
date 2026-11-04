@@ -78,7 +78,7 @@ async function runSql(connectionString, accessToken, sql) {
 async function missingTables() {
     const missing = []
 
-    for (const table of ['users', 'shirts']) {
+    for (const table of ['users', 'shirts', 'payments']) {
         // A real GET, not `head: true`: PostgREST answers HEAD on a missing
         // table with 204 and no error, which would look like success.
         const { error } = await supabase.from(table).select('id').limit(1)
@@ -133,7 +133,7 @@ export async function ensureSchema() {
     try {
         const sql = await readFile(schemaUrl, 'utf8')
         await runSql(connectionString, accessToken, sql)
-        console.log('[db] Schema ensured (users + shirts).')
+        console.log('[db] Schema ensured (users + shirts + payments).')
         return { ok: true }
     } catch (error) {
         console.error(`[db] Automatic schema setup failed: ${error.message}`)

@@ -1,8 +1,9 @@
 import { supabase, TABLES } from '../db.js'
 import { normalizeReference } from '../utils/reference.js'
 
-const SHIRT_COLUMNS = 'id, user_id, size, qty, created_at'
+const SHIRT_COLUMNS = 'id, user_id, size, name_on_shirt, qty, created_at'
 const VALID_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL']
+const MAX_NAME_ON_SHIRT = 40
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 function toPublicShirt(row) {
@@ -12,9 +13,15 @@ function toPublicShirt(row) {
         id: row.id,
         userId: row.user_id,
         size: row.size,
+        nameOnShirt: row.name_on_shirt,
         qty: row.qty,
         createdAt: row.created_at,
     }
+}
+
+/** Trim and collapse whitespace so printed names stay tidy. */
+function cleanNameOnShirt(value) {
+    return String(value ?? '').replace(/\s+/g, ' ').trim()
 }
 
 function parseQuantity(value) {
@@ -42,14 +49,23 @@ async function findUserIdByReference(referenceValue) {
 
 /**
  * POST /api/shirts
- * Body: { userId } or { reference }, plus { size, qty }
+ * Body: { userId } or { reference }, plus { size, qty, nameOnShirt }
  */
 export const registerShirt = async (req, res) => {
     const body = req.body ?? {}
     const size = String(body.size ?? body.shirtSize ?? '').trim().toUpperCase()
     const qty = parseQuantity(body.qty ?? body.quantity)
+    const nameOnShirt = cleanNameOnShirt(
+        body.nameOnShirt ?? body.name_on_shirt ?? body.shirtName
+    )
 
     let userId = body.userId ?? body.user_id ?? null
+
+    if (!nameOnShirt || nameOnShirt.length > MAX_NAME_ON_SHIRT) {
+        return res.status(400).json({
+            message: `nameOnShirt is required and must be ${MAX_NAME_ON_SHIRT} characters or fewer.`,
+        })
+    }
 
     if (!VALID_SIZES.includes(size)) {
         return res.status(400).json({
@@ -91,12 +107,19 @@ export const registerShirt = async (req, res) => {
 
     const { data, error } = await supabase
         .from(TABLES.shirts)
-        .insert({ user_id: userId, size, qty })
+        .insert({ user_id: userId, size, name_on_shirt: nameOnShirt, qty })
         .select(SHIRT_COLUMNS)
         .single()
 
     if (error) {
         console.error('registerShirt:', error)
+
+        if (error.code === '42703' || error.code === 'PGRST204') {
+            return res.status(503).json({
+                message:
+                    'The database is missing a newly added column. Re-run backend/sql/schema.sql (or `npm run db`) to apply the update.',
+            })
+        }
 
         if (error.code === '23503') {
             return res.status(404).json({ message: 'User not found.' })
@@ -156,6 +179,14 @@ export const getShirts = async (req, res) => {
 
     if (error) {
         console.error('getShirts:', error)
+
+        if (error.code === '42703' || error.code === 'PGRST204') {
+            return res.status(503).json({
+                message:
+                    'The database is missing a newly added column. Re-run backend/sql/schema.sql (or `npm run db`) to apply the update.',
+            })
+        }
+
         return res.status(500).json({
             message: 'Could not load the shirts.',
             detail: error.message,
@@ -169,11 +200,29 @@ export const getShirts = async (req, res) => {
 
 /**
  * PATCH /api/shirts/:id
- * Body: { size?, qty? }
+ * Body: { size?, qty?, nameOnShirt? }
  */
 export const updateShirt = async (req, res) => {
     const body = req.body ?? {}
     const updates = {}
+
+    if (
+        body.nameOnShirt !== undefined ||
+        body.name_on_shirt !== undefined ||
+        body.shirtName !== undefined
+    ) {
+        const nameOnShirt = cleanNameOnShirt(
+            body.nameOnShirt ?? body.name_on_shirt ?? body.shirtName
+        )
+
+        if (!nameOnShirt || nameOnShirt.length > MAX_NAME_ON_SHIRT) {
+            return res.status(400).json({
+                message: `nameOnShirt must be between 1 and ${MAX_NAME_ON_SHIRT} characters.`,
+            })
+        }
+
+        updates.name_on_shirt = nameOnShirt
+    }
 
     if (body.size !== undefined || body.shirtSize !== undefined) {
         const size = String(body.size ?? body.shirtSize).trim().toUpperCase()
@@ -201,7 +250,7 @@ export const updateShirt = async (req, res) => {
 
     if (Object.keys(updates).length === 0) {
         return res.status(400).json({
-            message: 'Provide at least one field to update: size or qty.',
+            message: 'Provide at least one field to update: size, qty, or nameOnShirt.',
         })
     }
 
@@ -214,6 +263,14 @@ export const updateShirt = async (req, res) => {
 
     if (error) {
         console.error('updateShirt:', error)
+
+        if (error.code === '42703' || error.code === 'PGRST204') {
+            return res.status(503).json({
+                message:
+                    'The database is missing a newly added column. Re-run backend/sql/schema.sql (or `npm run db`) to apply the update.',
+            })
+        }
+
         return res.status(500).json({
             message: 'Could not update the shirt reservation.',
             detail: error.message,

@@ -33,4 +33,5 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
 export const TABLES = Object.freeze({
     users: 'users',
     shirts: 'shirts',
+    payments: 'payments',
 })

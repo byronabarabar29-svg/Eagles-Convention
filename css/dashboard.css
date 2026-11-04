@@ -324,6 +324,8 @@ body {
 }
 .status-pending  { color: var(--warning); background: #fdf0dc; border: 1px solid #ecc97a; }
 .status-submitted{ color: var(--success); background: #e9f9ef; border: 1px solid #8fdcae; }
+.status-verified { color: #157a43; background: #dff5e8; border: 1px solid #6fc491; }
+.status-rejected { color: var(--danger); background: #fdecea; border: 1px solid #e8a29a; }
 
 /* ═══════════════════════════════════════════════════════════
    PANELS
@@ -615,6 +617,12 @@ body {
     background: var(--navy-800);
     border-color: var(--gold-500);
     box-shadow: 0 0 0 5px rgba(27, 42, 74, 0.08);
+}
+.timeline-step.is-rejected .timeline-dot {
+    color: #fff;
+    background: var(--danger);
+    border-color: #9e2f24;
+    box-shadow: 0 0 0 5px rgba(192, 57, 43, 0.12);
 }
 .timeline-step-title {
     font-weight: 700;

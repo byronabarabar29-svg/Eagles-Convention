@@ -19,9 +19,12 @@
     }
 
     async function request(path, options = {}) {
-        const { method = 'GET', body, timeout = 15000 } = options;
+        const { method = 'GET', body, timeout = 15000, headers = {} } = options;
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), timeout);
+
+        const requestHeaders = { ...headers };
+        if (body !== undefined) requestHeaders['Content-Type'] = 'application/json';
 
         try {
             let response;
@@ -29,9 +32,9 @@
             try {
                 response = await fetch(API_BASE + path, {
                     method,
-                    headers: body === undefined
-                        ? undefined
-                        : { 'Content-Type': 'application/json' },
+                    headers: Object.keys(requestHeaders).length > 0
+                        ? requestHeaders
+                        : undefined,
                     body: body === undefined ? undefined : JSON.stringify(body),
                     signal: controller.signal,
                 });

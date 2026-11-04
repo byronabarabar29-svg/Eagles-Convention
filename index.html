@@ -239,6 +239,14 @@
             </div>
 
             <div class="form-field">
+                <label for="shirtName">Name in Shirt</label>
+                <input type="text" id="shirtName" name="shirtName" placeholder="Name to print on your shirt"
+                       autocomplete="off" maxlength="40" required>
+                <p class="field-hint">This is the name that will be printed on the shirt. A nickname is fine.</p>
+                <p class="field-error" data-error-for="shirtName" role="alert"></p>
+            </div>
+
+            <div class="form-field">
                 <label for="shirtSize">Shirt Size</label>
                 <select id="shirtSize" name="shirtSize" required>
                     <option value="" selected disabled>Select a size…</option>

@@ -80,7 +80,11 @@ async function syncMemberCache(user) {
             ...base,
             type: 'tshirt',
             shirtId: shirt.id ?? null,
-            tshirt: { size: shirt.size, qty: shirt.qty },
+            tshirt: {
+                size: shirt.size,
+                qty: shirt.qty,
+                nameOnShirt: shirt.nameOnShirt ?? null,
+            },
         });
     }
 

@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Secretariat admin dashboard for the 3rd Eagles Mindanao Convention — manage members, review orders, check receipts, and verify payments.">
+    <title>Secretariat Admin | 3rd Eagles Mindanao Convention</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23d4a017'/%3E%3Cpath fill='%231b2a4a' d='M16 5l2.6 5.6 6 .7-4.5 4.2 1.2 5.9L16 18.6l-5.3 2.8 1.2-5.9-4.5-4.2 6-.7L16 5z'/%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body>
+
+    <!-- ══════════ TOP BAR ══════════ -->
+    <header class="admin-topbar">
+        <a href="../index.html" class="admin-logo" aria-label="Back to the convention home page">
+            <svg class="admin-logo-mark" viewBox="0 0 48 48" role="img" aria-label="Eagles Mindanao star emblem">
+                <circle cx="24" cy="24" r="23" fill="#d4a017" stroke="#1b2a4a" stroke-width="2"/>
+                <path fill="#1b2a4a" d="M24 8l4.4 9.5 10.2 1.2-7.6 6.9 2 10L24 31.7l-9 4.9 2-10-7.6-6.9 10.2-1.2L24 8z"/>
+            </svg>
+            <span class="admin-logo-text">
+                <span class="admin-logo-title">Eagle&nbsp;Convention</span>
+                <span class="admin-logo-sub">Secretariat Admin</span>
+            </span>
+        </a>
+
+        <nav class="admin-tabs is-hidden" id="adminTabs" aria-label="Admin sections">
+            <button type="button" class="admin-tab is-active" data-view="overview">Overview</button>
+            <button type="button" class="admin-tab" data-view="users">Users</button>
+            <button type="button" class="admin-tab" data-view="orders">Orders</button>
+            <button type="button" class="admin-tab" data-view="statistics">Statistics</button>
+        </nav>
+
+        <div class="admin-topbar-actions">
+            <button type="button" class="btn btn-ghost-light btn-sm is-hidden" id="refreshBtn">Refresh</button>
+            <button type="button" class="btn btn-ghost-light btn-sm is-hidden" id="signOutBtn">Sign out</button>
+        </div>
+    </header>
+
+    <main class="admin-shell">
+
+        <!-- ══════════ LOGIN GATE ══════════ -->
+        <section class="admin-login" id="adminLogin" aria-labelledby="adminLoginTitle">
+            <div class="admin-login-card">
+                <svg class="admin-login-emblem" viewBox="0 0 48 48" aria-hidden="true">
+                    <circle cx="24" cy="24" r="23" fill="#d4a017" stroke="#1b2a4a" stroke-width="2"/>
+                    <path fill="#1b2a4a" d="M24 8l4.4 9.5 10.2 1.2-7.6 6.9 2 10L24 31.7l-9 4.9 2-10-7.6-6.9 10.2-1.2L24 8z"/>
+                </svg>
+                <span class="admin-eyebrow">Restricted area</span>
+                <h1 id="adminLoginTitle">Secretariat sign in</h1>
+                <p class="admin-login-lead">Enter the admin key configured on the server to review members, orders, receipts and payments.</p>
+
+                <div class="error-banner is-hidden" id="loginError" role="alert"></div>
+
+                <form id="adminLoginForm" novalidate>
+                    <div class="form-field">
+                        <label for="adminKey">Admin key</label>
+                        <input type="password" id="adminKey" name="adminKey" placeholder="Enter admin key"
+                               autocomplete="current-password" spellcheck="false" required>
+                        <p class="field-hint">Set <code>ADMIN_KEY</code> in the root <code>.env</code> file, then restart the server.</p>
+                        <p class="field-error" id="adminKeyError" role="alert"></p>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg btn-block" id="adminLoginBtn">Unlock dashboard</button>
+                </form>
+
+                <p class="admin-login-foot">Looking for your member account? <a href="login.html">Member login &rarr;</a></p>
+            </div>
+        </section>
+
+        <!-- ══════════ ADMIN APP ══════════ -->
+        <div id="adminApp" class="is-hidden">
+
+            <!-- Overview -->
+            <section class="admin-view" id="view-overview" aria-labelledby="overviewTitle">
+                <div class="view-head">
+                    <div class="view-head-text">
+                        <span class="admin-eyebrow">Convention control</span>
+                        <h1 id="overviewTitle">Overview</h1>
+                        <p class="view-lead">Members, orders and payment verification at a glance.</p>
+                    </div>
+                    <span class="admin-pill" id="lastUpdated">Not loaded</span>
+                </div>
+
+                <div class="admin-stats" aria-label="Convention totals">
+                    <div class="admin-stat">
+                        <span class="stat-label">Registered members</span>
+                        <strong class="stat-value" id="statUsers">0</strong>
+                        <span class="stat-sub" id="statUsersSub">—</span>
+                    </div>
+                    <div class="admin-stat">
+                        <span class="stat-label">Orders</span>
+                        <strong class="stat-value" id="statOrders">0</strong>
+                        <span class="stat-sub">registration &amp; t-shirts</span>
+                    </div>
+                    <div class="admin-stat">
+                        <span class="stat-label">Expected revenue</span>
+                        <strong class="stat-value" id="statExpected">₱0</strong>
+                        <span class="stat-sub">all orders</span>
+                    </div>
+                    <div class="admin-stat">
+                        <span class="stat-label">Verified</span>
+                        <strong class="stat-value" id="statVerified">₱0</strong>
+                        <span class="stat-sub" id="statVerifiedSub">0 payments</span>
+                    </div>
+                    <div class="admin-stat">
+                        <span class="stat-label">For verification</span>
+                        <strong class="stat-value" id="statPending">0</strong>
+                        <span class="stat-sub" id="statPendingSub">payments waiting</span>
+                    </div>
+                </div>
+
+                <section class="admin-panel" aria-labelledby="pendingTitle">
+                    <div class="panel-head">
+                        <div class="panel-head-text">
+                            <h2 id="pendingTitle">Awaiting verification</h2>
+                            <p class="panel-sub">Payments submitted by members, newest first.</p>
+                        </div>
+                        <span class="admin-pill" id="pendingPill">0 pending</span>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table class="admin-table" id="pendingTable">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Member</th>
+                                    <th scope="col">Reference</th>
+                                    <th scope="col" class="col-total">Amount</th>
+                                    <th scope="col">Method</th>
+                                    <th scope="col">Submitted</th>
+                                    <th scope="col">Receipt</th>
+                                    <th scope="col" class="col-actions">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pendingBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="admin-empty is-hidden" id="pendingEmpty">
+                        <strong>Nothing waiting.</strong>
+                        <span>Every submitted payment has been reviewed.</span>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Users -->
+            <section class="admin-view is-hidden" id="view-users" aria-labelledby="usersTitle">
+                <div class="view-head">
+                    <div class="view-head-text">
+                        <span class="admin-eyebrow">Directory</span>
+                        <h1 id="usersTitle">Users</h1>
+                        <p class="view-lead">Every registered member and the orders linked to their reference number.</p>
+                    </div>
+                    <span class="admin-pill" id="userCount">0 members</span>
+                </div>
+
+                <div class="admin-toolbar">
+                    <label class="admin-search">
+                        <span class="visually-hidden">Search users</span>
+                        <input type="search" id="userSearch" placeholder="Search name, username, reference, contact…" autocomplete="off">
+                    </label>
+                    <label class="admin-filter">
+                        <span>Status</span>
+                        <select id="userStatusFilter">
+                            <option value="all">All statuses</option>
+                            <option value="unpaid">Unpaid</option>
+                            <option value="pending">For verification</option>
+                            <option value="verified">Verified</option>
+                            <option value="rejected">Rejected</option>
+                        </select>
+                    </label>
+                </div>
+
+                <section class="admin-panel">
+                    <div class="table-wrap">
+                        <table class="admin-table" id="usersTable">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Member</th>
+                                    <th scope="col">Reference</th>
+                                    <th scope="col">Contact</th>
+                                    <th scope="col">Region</th>
+                                    <th scope="col" class="col-qty">Orders</th>
+                                    <th scope="col" class="col-total">Total</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col" class="col-actions">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="admin-empty is-hidden" id="usersEmpty">
+                        <strong>No members match.</strong>
+                        <span>Try a different search or status filter.</span>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Orders -->
+            <section class="admin-view is-hidden" id="view-orders" aria-labelledby="ordersTitle">
+                <div class="view-head">
+                    <div class="view-head-text">
+                        <span class="admin-eyebrow">Ledger</span>
+                        <h1 id="ordersTitle">Orders</h1>
+                        <p class="view-lead">Registration fees and t-shirt reservations with their payment status.</p>
+                    </div>
+                    <span class="admin-pill" id="orderCount">0 orders</span>
+                </div>
+
+                <div class="admin-toolbar">
+                    <label class="admin-search">
+                        <span class="visually-hidden">Search orders</span>
+                        <input type="search" id="orderSearch" placeholder="Search order no., member, reference, transaction…" autocomplete="off">
+                    </label>
+                    <label class="admin-filter">
+                        <span>Status</span>
+                        <select id="orderStatusFilter">
+                            <option value="all">All statuses</option>
+                            <option value="unpaid">Unpaid</option>
+                            <option value="pending">For verification</option>
+                            <option value="verified">Verified</option>
+                            <option value="rejected">Rejected</option>
+                        </select>
+                    </label>
+                </div>
+
+                <section class="admin-panel">
+                    <div class="table-wrap">
+                        <table class="admin-table" id="ordersTable">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Order No.</th>
+                                    <th scope="col">Member</th>
+                                    <th scope="col">Item</th>
+                                    <th scope="col" class="col-qty">Qty</th>
+                                    <th scope="col" class="col-total">Total</th>
+                                    <th scope="col">Payment</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col" class="col-actions">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ordersBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="admin-empty is-hidden" id="ordersEmpty">
+                        <strong>No orders match.</strong>
+                        <span>Try a different search or status filter.</span>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Statistics -->
+            <section class="admin-view is-hidden" id="view-statistics" aria-labelledby="statisticsTitle">
+                <div class="view-head">
+                    <div class="view-head-text">
+                        <span class="admin-eyebrow">Money &amp; members</span>
+                        <h1 id="statisticsTitle">Statistics</h1>
+                        <p class="view-lead">Payment totals, shirt reservations, regional breakdown, and every confirmed payment.</p>
+                    </div>
+                    <span class="admin-pill" id="statsPill">0 paid</span>
+                </div>
+
+                <section class="admin-panel" aria-labelledby="shirtStatsTitle">
+                    <div class="panel-head">
+                        <div class="panel-head-text">
+                            <h2 id="shirtStatsTitle">Shirts &amp; registrations</h2>
+                            <p class="panel-sub">How many shirts were reserved and how much has been confirmed for them.</p>
+                        </div>
+                    </div>
+
+                    <div class="admin-stats">
+                        <div class="admin-stat">
+                            <span class="stat-label">Shirt amount tendered</span>
+                            <strong class="stat-value is-success" id="statsShirtTendered">₱0</strong>
+                            <span class="stat-sub" id="statsShirtTenderedSub">verified payments only</span>
+                        </div>
+                        <div class="admin-stat">
+                            <span class="stat-label">Total shirt value</span>
+                            <strong class="stat-value" id="statsShirtValue">₱0</strong>
+                            <span class="stat-sub">all reservations</span>
+                        </div>
+                        <div class="admin-stat">
+                            <span class="stat-label">Shirts reserved</span>
+                            <strong class="stat-value" id="statsShirtQty">0</strong>
+                            <span class="stat-sub" id="statsShirtQtySub">across 0 members</span>
+                        </div>
+                        <div class="admin-stat">
+                            <span class="stat-label">Registered members</span>
+                            <strong class="stat-value" id="statsMembers">0</strong>
+                            <span class="stat-sub" id="statsMembersSub">—</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="admin-panel" aria-labelledby="paymentStatsTitle">
+                    <div class="panel-head">
+                        <div class="panel-head-text">
+                            <h2 id="paymentStatsTitle">Payment status</h2>
+                            <p class="panel-sub">Members and amounts in each verification state.</p>
+                        </div>
+                    </div>
+
+                    <div class="admin-stats">
+                        <div class="admin-stat">
+                            <span class="stat-label">Paid</span>
+                            <strong class="stat-value is-success" id="statsPaid">0</strong>
+                            <span class="stat-sub" id="statsPaidSub">₱0 verified</span>
+                        </div>
+                        <div class="admin-stat">
+                            <span class="stat-label">Pending</span>
+                            <strong class="stat-value is-warning" id="statsPending">0</strong>
+                            <span class="stat-sub" id="statsPendingSub">₱0 waiting</span>
+                        </div>
+                        <div class="admin-stat">
+                            <span class="stat-label">Rejected</span>
+                            <strong class="stat-value is-danger" id="statsRejected">0</strong>
+                            <span class="stat-sub" id="statsRejectedSub">₱0 rejected</span>
+                        </div>
+                        <div class="admin-stat">
+                            <span class="stat-label">Unpaid</span>
+                            <strong class="stat-value is-muted" id="statsUnpaid">0</strong>
+                            <span class="stat-sub" id="statsUnpaidSub">₱0 outstanding</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="admin-panel" aria-labelledby="regionStatsTitle">
+                    <div class="panel-head">
+                        <div class="panel-head-text">
+                            <h2 id="regionStatsTitle">Members by region</h2>
+                            <p class="panel-sub">Registration and shirt totals for each club region.</p>
+                        </div>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table class="admin-table" id="regionTable">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Region</th>
+                                    <th scope="col" class="col-qty">Members</th>
+                                    <th scope="col" class="col-qty">Shirts</th>
+                                    <th scope="col" class="col-total">Shirt value</th>
+                                    <th scope="col" class="col-qty">Paid</th>
+                                    <th scope="col" class="col-qty">Pending</th>
+                                    <th scope="col" class="col-qty">Rejected</th>
+                                    <th scope="col" class="col-qty">Unpaid</th>
+                                </tr>
+                            </thead>
+                            <tbody id="regionBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="admin-empty is-hidden" id="regionEmpty">
+                        <strong>No regions yet.</strong>
+                        <span>Member regions will appear once people register.</span>
+                    </div>
+                </section>
+
+                <section class="admin-panel" aria-labelledby="paidStatsTitle">
+                    <div class="panel-head">
+                        <div class="panel-head-text">
+                            <h2 id="paidStatsTitle">Users who paid</h2>
+                            <p class="panel-sub">Members whose payments have been verified, newest first.</p>
+                        </div>
+                        <span class="admin-pill" id="paidCount">0 paid</span>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table class="admin-table" id="paidTable">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Member</th>
+                                    <th scope="col">Region</th>
+                                    <th scope="col" class="col-qty">Shirts</th>
+                                    <th scope="col" class="col-total">Shirt value</th>
+                                    <th scope="col" class="col-total">Tendered</th>
+                                    <th scope="col">Method</th>
+                                    <th scope="col">Verified</th>
+                                    <th scope="col" class="col-actions">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="paidBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="admin-empty is-hidden" id="paidEmpty">
+                        <strong>No verified payments yet.</strong>
+                        <span>Once a payment is verified, the member will appear here.</span>
+                    </div>
+                </section>
+            </section>
+        </div>
+    </main>
+
+    <!-- ══════════ REVIEW DIALOG ══════════ -->
+    <dialog class="admin-dialog" id="reviewDialog" aria-labelledby="reviewTitle">
+        <div class="admin-dialog-card">
+            <div id="reviewContent">
+                <p class="review-loading">Loading member details…</p>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- ══════════ RECEIPT LIGHTBOX ══════════ -->
+    <dialog class="receipt-dialog" id="receiptDialog" aria-label="Payment receipt">
+        <div class="receipt-dialog-inner">
+            <button type="button" class="receipt-dialog-close" id="receiptCloseBtn" aria-label="Close receipt">&times;</button>
+            <img id="receiptFullImage" alt="Payment receipt">
+        </div>
+    </dialog>
+
+    <!-- ══════════ TOAST ══════════ -->
+    <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+    <script src="../js/api.js" defer></script>
+    <script src="../js/admin.js" defer></script>
+</body>
+</html>

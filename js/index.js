@@ -159,16 +159,21 @@ function validateRegistration() {
 }
 
 function validateShirt() {
+    const name = document.getElementById('shirtName');
     const size = document.getElementById('shirtSize');
     const qty  = document.getElementById('shirtQty');
 
+    const printName = name.value.trim().replace(/\s+/g, ' ');
+    const okName = setFieldState(name,
+        printName.length >= 1 && printName.length <= 40
+            ? '' : 'Enter the name to display on your shirt.');
     const okSize = setFieldState(size, size.value ? '' : 'Please choose a size.');
     const qtyNum = Number(qty.value);
     const okQty  = setFieldState(qty,
         Number.isInteger(qtyNum) && qtyNum >= 1 && qtyNum <= 10
             ? '' : 'Quantity must be between 1 and 10.');
 
-    return okSize && okQty;
+    return okName && okSize && okQty;
 }
 
 /* Clear a field's error as the user fixes it */
@@ -287,8 +292,13 @@ shirtDeclineBtn.addEventListener('click', () => {
 
 /* ── FLOW STEP 2b: user wants the shirt → show shirt form ── */
 shirtAcceptBtn.addEventListener('click', () => {
+    const nameInput = document.getElementById('shirtName');
+    if (nameInput && !nameInput.value.trim()) {
+        nameInput.value = currentRegistration?.fullName ?? '';
+    }
+
     showShirtPanel(shirtForm);
-    requestAnimationFrame(() => document.getElementById('shirtSize')?.focus());
+    requestAnimationFrame(() => nameInput?.focus());
 });
 
 shirtBackBtn.addEventListener('click', () => showShirtPanel(shirtAskPanel));
@@ -309,6 +319,7 @@ shirtForm.addEventListener('submit', async (event) => {
     }
 
     const shirt = {
+        nameOnShirt: document.getElementById('shirtName').value.trim().replace(/\s+/g, ' '),
         size: document.getElementById('shirtSize').value,
         qty:  Number(document.getElementById('shirtQty').value),
     };

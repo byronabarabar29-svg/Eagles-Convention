@@ -99,6 +99,7 @@ function buildOrders(records, savedOrders) {
             payment: prior?.payment ?? null,        // { method, txnRef, txnDate, submittedAt }
             shirtId: details.shirtId ?? null,
             size: details.size ?? null,
+            nameOnShirt: details.nameOnShirt ?? null,
         });
     };
 
@@ -111,12 +112,17 @@ function buildOrders(records, savedOrders) {
                 '3rd Eagles Mindanao Convention — delegate fee',
                 1, FEES.registration);
         } else if (record.type === 'tshirt' && record.tshirt) {
+            const nameOnShirt = record.tshirt.nameOnShirt ?? null;
+
             pushOrder(shirtSeq++, 'tshirt',
                 `Convention T-Shirt — Size ${record.tshirt.size}`,
-                `Official convention shirt × ${record.tshirt.qty}`,
+                nameOnShirt
+                    ? `Official convention shirt × ${record.tshirt.qty} · Name in shirt: ${nameOnShirt}`
+                    : `Official convention shirt × ${record.tshirt.qty}`,
                 Number(record.tshirt.qty) || 1, FEES.tshirt, {
                     shirtId: record.shirtId ?? null,
                     size: record.tshirt.size,
+                    nameOnShirt,
                 });
         }
     }
@@ -130,12 +136,49 @@ function ordersTotal(orders) {
 }
 
 function amountDue(orders) {
-    return (orders ?? []).filter(o => o.status !== 'submitted').reduce((s, o) => s + (o.total ?? 0), 0);
+    return (orders ?? [])
+        .filter(o => o.status !== 'submitted' && o.status !== 'verified')
+        .reduce((s, o) => s + (o.total ?? 0), 0);
 }
 
 function overallStatus(orders) {
     if (!orders || orders.length === 0) return 'pending';
-    return orders.every(o => o.status === 'submitted') ? 'submitted' : 'pending';
+    if (orders.every(o => o.status === 'verified')) return 'verified';
+    if (orders.some(o => o.status === 'rejected')) return 'rejected';
+    if (orders.every(o => o.status === 'submitted' || o.status === 'verified')) return 'submitted';
+    return 'pending';
+}
+
+/** Map the server payment status to the status used by order rows. */
+function paymentToOrderStatus(status) {
+    if (status === 'verified') return 'verified';
+    if (status === 'rejected') return 'rejected';
+    return 'submitted'; // pending review
+}
+
+/**
+ * Merge the server's payment (including verification) into the local orders.
+ * One payment covers every order, so all rows share the same status.
+ */
+function applyPaymentToOrders(orders, payment) {
+    if (!payment) return orders;
+
+    const status = paymentToOrderStatus(payment.status);
+
+    return (orders ?? []).map(o => ({
+        ...o,
+        status,
+        payment: {
+            method:       payment.method ?? null,
+            txnRef:       payment.txnRef ?? null,
+            txnDate:      payment.txnDate ?? null,
+            receiptImage: payment.receiptImage ?? null,
+            submittedAt:  payment.submittedAt ?? null,
+            status:       payment.status ?? 'pending',
+            note:         payment.note ?? null,
+            verifiedAt:   payment.verifiedAt ?? null,
+        },
+    }));
 }
 
 /** Initials for the avatar, e.g. "Juan Dela Cruz" → "JD" */
@@ -430,8 +473,32 @@ function renderStats(orders) {
     statAmountDue.textContent = fmt.format(due);
     statAmountSub.textContent = due === 0 ? 'nothing left to pay' : 'pending payment';
     const status = overallStatus(orders);
-    statPaymentStatus.textContent = status === 'submitted' ? 'Submitted — For Verification' : 'Pending Payment';
-    statPaymentStatus.className   = 'status-pill ' + (status === 'submitted' ? 'status-submitted' : 'status-pending');
+    const labels = {
+        verified:  'Verified — Payment Confirmed',
+        rejected:  'Rejected — Please Resubmit',
+        submitted: 'Submitted — For Verification',
+        pending:   'Pending Payment',
+    };
+    statPaymentStatus.textContent = labels[status] ?? labels.pending;
+    statPaymentStatus.className   = 'status-pill ' + statusClass(status);
+}
+
+function statusLabel(status) {
+    switch (status) {
+        case 'verified':  return 'Verified';
+        case 'rejected':  return 'Rejected';
+        case 'submitted': return 'Submitted';
+        default:          return 'Pending';
+    }
+}
+
+function statusClass(status) {
+    switch (status) {
+        case 'verified':  return 'status-verified';
+        case 'rejected':  return 'status-rejected';
+        case 'submitted': return 'status-submitted';
+        default:          return 'status-pending';
+    }
 }
 
 const TRASH_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v5"></path><path d="M14 11v5"></path></svg>`;
@@ -466,7 +533,7 @@ function renderOrdersTable(orders) {
                 </td>
                 <td data-label="Qty" class="col-qty">${o.qty}</td>
                 <td data-label="Total" class="col-total">${fmt.format(o.total)}</td>
-                <td data-label="Status"><span class="status-pill ${o.status === 'submitted' ? 'status-submitted' : 'status-pending'}">${o.status === 'submitted' ? 'Submitted' : 'Pending'}</span></td>
+                <td data-label="Status"><span class="status-pill ${statusClass(o.status)}">${statusLabel(o.status)}</span></td>
                 <td data-label="Actions" class="col-actions">${orderActionsCell(o)}</td>
             </tr>`).join('');
     }
@@ -476,46 +543,84 @@ function renderOrdersTable(orders) {
 }
 
 function renderTimeline(orders) {
-    const allSubmitted = orders.length > 0 && orders.every(o => o.status === 'submitted');
-    const someSubmitted = orders.some(o => o.status === 'submitted');
+    const allVerified  = orders.length > 0 && orders.every(o => o.status === 'verified');
+    const anyRejected  = orders.some(o => o.status === 'rejected');
+    const allPaid      = orders.length > 0 &&
+        orders.every(o => o.status === 'submitted' || o.status === 'verified');
+    const somePaid     = orders.some(o => o.status !== 'pending');
 
     const steps = [
         { title: 'Registered', caption: 'Your place at the convention is recorded.', state: 'done' },
         {
             title: 'Payment Submitted',
-            caption: allSubmitted
+            caption: allPaid
                 ? 'Received — waiting for secretariat verification.'
-                : someSubmitted
+                : somePaid
                     ? 'Partly submitted — complete the remaining orders.'
                     : 'Use the payment form to submit your payment details.',
-            state: allSubmitted ? 'done' : someSubmitted ? 'current' : 'todo',
+            state: allPaid ? 'done' : somePaid ? 'current' : 'todo',
         },
         {
             title: 'Verified',
-            caption: 'Secretariat verifies all payments — bring your receipt or reference on convention day.',
-            state: 'todo',
+            caption: allVerified
+                ? 'Payment confirmed. You are all set for the convention.'
+                : anyRejected
+                    ? 'The secretariat flagged your payment. Please resubmit your details.'
+                    : allPaid
+                        ? 'The secretariat is checking your payment.'
+                        : 'The secretariat verifies payments after submission.',
+            state: allVerified ? 'done' : anyRejected ? 'rejected' : allPaid ? 'current' : 'todo',
         },
     ];
 
-    paymentTimeline.innerHTML = steps.map((s, i) => `
-        <li class="timeline-step ${s.state === 'done' ? 'is-done' : s.state === 'current' ? 'is-current' : ''}">
-            <span class="timeline-dot" aria-hidden="true">${s.state === 'done' ? '✓' : i + 1}</span>
+    paymentTimeline.innerHTML = steps.map((s, i) => {
+        const stateClass = s.state === 'done' ? 'is-done'
+            : s.state === 'current' ? 'is-current'
+                : s.state === 'rejected' ? 'is-rejected'
+                    : '';
+        const dot = s.state === 'done' ? '✓' : s.state === 'rejected' ? '!' : i + 1;
+
+        return `
+        <li class="timeline-step ${stateClass}">
+            <span class="timeline-dot" aria-hidden="true">${dot}</span>
             <span class="timeline-step-title">${escapeHtml(s.title)}</span>
             <span class="timeline-step-caption">${escapeHtml(s.caption)}</span>
-        </li>`).join('');
+        </li>`;
+    }).join('');
 
-    timelinePill.textContent = allSubmitted ? 'For verification' : 'Not yet paid';
+    timelinePill.textContent = allVerified
+        ? 'Verified'
+        : anyRejected
+            ? 'Payment rejected'
+            : allPaid
+                ? 'For verification'
+                : 'Not yet paid';
 }
 
 function renderPayment(orders) {
     const due = amountDue(orders);
     paymentAmount.value = fmt.format(due === 0 ? ordersTotal(orders) : due);
 
-    const allSubmitted = orders.length > 0 && orders.every(o => o.status === 'submitted');
-    paymentLead.textContent = allSubmitted
-        ? 'All your orders are submitted for verification. You can still update the payment details below if something changed.'
-        : 'One payment covers all your orders. Submit your payment details and they will be marked submitted for verification.';
-    paymentSubmitBtn.textContent = allSubmitted ? 'Update Payment Details' : 'Save Payment Details';
+    const allVerified  = orders.length > 0 && orders.every(o => o.status === 'verified');
+    const anyRejected  = orders.some(o => o.status === 'rejected');
+    const allPaid      = orders.length > 0 &&
+        orders.every(o => o.status === 'submitted' || o.status === 'verified');
+
+    if (anyRejected) {
+        paymentLead.textContent = 'The secretariat rejected your last payment. Update the details below to resubmit it for verification.';
+    } else if (allVerified) {
+        paymentLead.textContent = 'Your payment is verified. You can still update the details below if something changed.';
+    } else if (allPaid) {
+        paymentLead.textContent = 'All your orders are submitted for verification. You can still update the payment details below if something changed.';
+    } else {
+        paymentLead.textContent = 'One payment covers all your orders. Submit your payment details and they will be marked submitted for verification.';
+    }
+
+    paymentSubmitBtn.textContent = anyRejected
+        ? 'Resubmit Payment Details'
+        : allPaid
+            ? 'Update Payment Details'
+            : 'Save Payment Details';
 
     // Show the receipt that is currently saved (or a newly picked, not-yet-saved one)
     const savedReceipt = orders.find(o => o.payment?.receiptImage)?.payment?.receiptImage ?? null;
@@ -542,6 +647,50 @@ function renderAll(state) {
     renderOrdersTable(state.orders);
     renderTimeline(state.orders);
     renderPayment(state.orders);
+}
+
+/* ── Payment sync with the server ────────────────────────── */
+async function syncPaymentFromServer(session, refKey, orders, member) {
+    if (!session || refKey === DEMO_REF_KEY) return;
+
+    try {
+        const result = await API.request(
+            `/api/payments?reference=${encodeURIComponent(session.reference)}`
+        );
+        let payment = result.payment ?? null;
+
+        // Older dashboards only saved payments in localStorage. Upload the
+        // latest local copy once so the secretariat can verify it.
+        if (!payment) {
+            const local = orders.find(o => o.payment?.method && o.payment?.txnDate)?.payment ?? null;
+
+            if (local) {
+                try {
+                    const saved = await API.request('/api/payments', {
+                        method: 'POST',
+                        body: {
+                            reference: session.reference,
+                            method: local.method,
+                            txnRef: local.txnRef,
+                            txnDate: local.txnDate,
+                            receiptImage: local.receiptImage,
+                        },
+                    });
+                    payment = saved.payment ?? null;
+                } catch (err) {
+                    console.warn('Could not upload the saved payment:', err);
+                }
+            }
+        }
+
+        if (!payment) return;
+
+        const merged = applyPaymentToOrders(orders, payment);
+        saveOrders(refKey, merged);
+        renderAll({ session, member, orders: merged });
+    } catch (err) {
+        console.warn('Could not sync payment status:', err);
+    }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -575,6 +724,7 @@ if (!session) {
         const orders = buildOrders(records, getSavedOrders(refKey));
         saveOrders(refKey, orders); // persist merged shape back
         renderAll({ session, member, orders });
+        syncPaymentFromServer(session, refKey, orders, member);
     }
 }
 
@@ -599,8 +749,11 @@ copyRefBtn?.addEventListener('click', async () => {
 });
 
 /* ── Payment form ────────────────────────────────────────── */
-paymentForm?.addEventListener('submit', (event) => {
+paymentForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
+
+    if (!session) return;
+
     const refKey  = refCompareKey(session.refKey);
     const records = getMemberRecords(refKey);
     if (records.length === 0) {
@@ -634,13 +787,49 @@ paymentForm?.addEventListener('submit', (event) => {
         txnDate:     txnDate.value,
         receiptImage: receiptImageValue,
         submittedAt: new Date().toISOString(),
+        status:      'pending',
+        note:        null,
+        verifiedAt:  null,
     };
-    const updated = orders.map(o => ({ ...o, status: 'submitted', payment }));
-    saveOrders(refKey, updated);
-    pendingReceipt = null;
-    resetReceiptDrop();
-    renderAll({ session, member: mergeMemberRecords(records), orders: updated });
-    showToast('Payment details saved — awaiting secretariat verification.');
+
+    const originalLabel = paymentSubmitBtn.textContent;
+    paymentSubmitBtn.disabled = true;
+    paymentSubmitBtn.textContent = 'Saving…';
+
+    try {
+        let savedPayment = null;
+
+        // Demo data never leaves this browser.
+        if (refKey !== DEMO_REF_KEY) {
+            const result = await API.request('/api/payments', {
+                method: 'POST',
+                body: {
+                    reference: session.reference,
+                    method: payment.method,
+                    txnRef: payment.txnRef,
+                    txnDate: payment.txnDate,
+                    receiptImage: payment.receiptImage,
+                },
+            });
+            savedPayment = result.payment ?? null;
+        }
+
+        const updated = savedPayment
+            ? applyPaymentToOrders(orders, savedPayment)
+            : orders.map(o => ({ ...o, status: 'submitted', payment }));
+
+        saveOrders(refKey, updated);
+        pendingReceipt = null;
+        resetReceiptDrop();
+        renderAll({ session, member: mergeMemberRecords(records), orders: updated });
+        showToast('Payment details saved — awaiting secretariat verification.');
+    } catch (err) {
+        console.error('Could not save payment details:', err);
+        showToast(err.message || 'Could not save your payment details. Please try again.');
+    } finally {
+        paymentSubmitBtn.disabled = false;
+        paymentSubmitBtn.textContent = originalLabel;
+    }
 });
 
 /* ── Remove an order ─────────────────────────────────────── */
@@ -788,7 +977,7 @@ seedDemoBtn?.addEventListener('click', () => {
     };
     const demoRecords = [
         { ...base, type: 'registration', tshirt: null },
-        { ...base, type: 'tshirt', tshirt: { size: 'L', qty: 2 } },
+        { ...base, type: 'tshirt', tshirt: { size: 'L', qty: 2, nameOnShirt: 'Demo Member' } },
     ];
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
