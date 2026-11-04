@@ -7,10 +7,11 @@ Base URL during development: `http://localhost:3000`
 1. Add these values to the root `.env` file:
 
    ```env
-     SUPABASE_URL="your_Url"
+   SUPABASE_URL="your_Url"
    SUPABASE_PUBLISHABLE_KEY="your key"
    SUPABASE_SECRET_KEY="your key"
    SUPABASE_JWKS_URL="your url"
+   ADMIN_KEY="planned password"
 
 3. Start the database:
 
