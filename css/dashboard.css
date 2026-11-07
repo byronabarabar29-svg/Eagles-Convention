@@ -144,16 +144,6 @@ body {
 }
 
 .dash-topbar-actions { display: flex; align-items: center; gap: 0.6rem; }
-.dash-navlink {
-    font-size: 0.88rem;
-    font-weight: 600;
-    color: rgba(250, 246, 236, 0.75);
-    text-decoration: none;
-    padding: 0.4rem 0.6rem;
-    border-radius: var(--radius-sm);
-    transition: color 0.2s ease;
-}
-.dash-navlink:hover { color: var(--gold-400); }
 
 /* ═══════════════════════════════════════════════════════════
    SHELL
@@ -776,7 +766,6 @@ body {
 
 @media (max-width: 760px) {
     .dash-topbar { padding: 0 1rem; height: 56px; }
-    .dash-navlink { display: none; }
     .dash-shell { padding: 1.25rem 0.9rem 2rem; gap: 1rem; }
 
     .welcome-card { padding: 1.25rem; gap: 1rem; }

@@ -141,7 +141,7 @@ export async function ensureSchema() {
     }
 }
 
-/* Allow `node backend/sql/ensureSchema.js` (npm run db:setup). */
+/* Allow `node backend/sql/ensureSchema.js` (npm run db). */
 const isDirectRun =
     process.argv[1] &&
     pathToFileURL(process.argv[1]).href === import.meta.url

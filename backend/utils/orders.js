@@ -1,7 +1,5 @@
 import { FEES } from './fees.js'
 
-export const PAYMENT_STATUSES = Object.freeze(['pending', 'verified', 'rejected'])
-
 /** EMC-LX3K9Q2AB-7F2D → the reference as members see it. */
 export function prettyReference(value) {
     const key = String(value ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '')

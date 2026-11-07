@@ -1,12 +1,17 @@
 /* ═══════════════════════════════════════════════════════════
    Shared API helper for the Express + Supabase backend.
    Set window.EMC_API_BASE before loading this file to point at a
-   different server (defaults to http://localhost:3000).
+   different server. Otherwise, local development uses
+   http://localhost:3000 and the deployed site uses Render.
    ═══════════════════════════════════════════════════════════ */
 (function () {
     'use strict';
 
-    const API_BASE = window.EMC_API_BASE || 'http://localhost:3000';
+    const LOCAL_HOSTS = ['localhost', '127.0.0.1', '::1'];
+    const isLocal = location.protocol === 'file:' || LOCAL_HOSTS.includes(location.hostname);
+
+    const API_BASE = window.EMC_API_BASE
+        || (isLocal ? 'http://localhost:3000' : 'https://eagles-backend-rwsv.onrender.com');
 
     class ApiError extends Error {
         constructor(message, status = 0, data = null) {

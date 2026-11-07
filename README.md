@@ -7,18 +7,19 @@ Base URL during development: `http://localhost:3000`
 1. Add these values to the root `.env` file:
 
    ```env
-     SUPABASE_URL="your_Url"
+   SUPABASE_URL="your_Url"
    SUPABASE_PUBLISHABLE_KEY="your key"
    SUPABASE_SECRET_KEY="your key"
-   SUPABASE_JWKS_URL="your url"
+   ADMIN_KEY="a-long-random-value"
+   ```
 
-3. Start the database:
+2. Start the database:
 
    ```bash
    npm run db
    ```
 
-4. Start the server:
+3. Start the server:
 
    ```bash
    npm run dev
