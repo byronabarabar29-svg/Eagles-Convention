@@ -1,12 +1,14 @@
 import { supabase, TABLES } from '../db.js'
+import { sendRegistrationEmail } from '../utils/mailer.js'
 import { hashPassword, verifyPassword } from '../utils/password.js'
 import { generateReference, normalizeReference } from '../utils/reference.js'
 
 const USER_COLUMNS =
-    'id, full_name, username, contact_number, club_region, reference, created_at'
+    'id, full_name, username, email, contact_number, club_region, reference, created_at'
 
 const PH_CONTACT = /^(09\d{9}|\+639\d{9}|0\d{6,10})$/
 const USERNAME = /^[A-Za-z0-9._-]{2,32}$/
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
 function text(value) {
     return typeof value === 'string' ? value.trim() : ''
@@ -25,6 +27,7 @@ function toPublicUser(row) {
         id: row.id,
         fullName: row.full_name,
         username: row.username,
+        email: row.email,
         contactNumber: row.contact_number,
         clubRegion: row.club_region,
         reference: row.reference,
@@ -36,14 +39,22 @@ function isUniqueViolation(error) {
     return error?.code === '23505'
 }
 
+function isMissingColumn(error) {
+    return error?.code === '42703' || error?.code === 'PGRST204'
+}
+
+const SCHEMA_UPGRADE_MESSAGE =
+    'The database is missing a newly added column. Re-run backend/sql/schema.sql (or `npm run db`) to apply the update.'
+
 /**
  * POST /api/users/register
- * Body: { fullName, username?, contactNumber, clubRegion, password? }
+ * Body: { fullName, username?, email?, contactNumber, clubRegion, password? }
  */
 export const registerUser = async (req, res) => {
     const body = req.body ?? {}
     const fullName = text(body.fullName ?? body.full_name)
     const username = text(body.username)
+    const email = text(body.email).toLowerCase()
     const contactNumber = text(body.contactNumber ?? body.contact_number)
     const clubRegion = text(body.clubRegion ?? body.club_region)
     const password = typeof body.password === 'string' ? body.password : ''
@@ -56,6 +67,12 @@ export const registerUser = async (req, res) => {
 
     if (username && !USERNAME.test(username)) {
         errors.push('username must be 2-32 characters using letters, numbers, dot, underscore, or hyphen.')
+    }
+
+    if (!email) {
+        errors.push('email is required.')
+    } else if (!EMAIL.test(email)) {
+        errors.push('email must be a valid email address.')
     }
 
     if (!PH_CONTACT.test(contactNumber.replace(/[\s()-]/g, ''))) {
@@ -90,6 +107,7 @@ export const registerUser = async (req, res) => {
             .insert({
                 full_name: fullName,
                 username: username || null,
+                email,
                 contact_number: contactNumber,
                 club_region: clubRegion,
                 reference,
@@ -99,10 +117,17 @@ export const registerUser = async (req, res) => {
             .single()
 
         if (!error) {
+            const user = toPublicUser(data)
+
+            // Non-fatal: the helper logs failures and never throws, so a
+            // mail outage cannot break a successful registration.
+            const email = await sendRegistrationEmail(user)
+
             return res.status(201).json({
                 message: 'Registration successful.',
-                user: toPublicUser(data),
+                user,
                 reference: data.reference,
+                emailSent: email.sent === true,
             })
         }
 
@@ -115,11 +140,22 @@ export const registerUser = async (req, res) => {
                 })
             }
 
+            if (detail.includes('email')) {
+                return res.status(409).json({
+                    message: 'That email address is already registered.',
+                })
+            }
+
             // Otherwise it was a reference collision — try again.
             continue
         }
 
         console.error('registerUser:', error)
+
+        if (isMissingColumn(error)) {
+            return res.status(503).json({ message: SCHEMA_UPGRADE_MESSAGE })
+        }
+
         return res.status(500).json({
             message: 'Could not create the user.',
             detail: error.message,
@@ -133,13 +169,14 @@ export const registerUser = async (req, res) => {
 
 /**
  * POST /api/users/login
- * Body: { reference, password }  — for accounts that set a password
- *    or: { reference, username }  — for passwordless accounts
- *    or: { reference, fullName }  — fallback for passwordless accounts
+ * Body: { reference, password }    — for accounts that set a password
+ *    or: { reference, identifier } — username, email, or full name
+ *    or: { reference, username }   — kept for older clients
+ *    or: { reference, fullName }   — fallback for passwordless accounts
  *
  * The reference number is the primary credential. If the account has a
- * password, it must be supplied; otherwise the username (or full name) is
- * checked.
+ * password, it must be supplied; otherwise the username, email, or full name
+ * is checked.
  */
 export const loginUser = async (req, res) => {
     const body = req.body ?? {}
@@ -148,7 +185,13 @@ export const loginUser = async (req, res) => {
     )
     const password = typeof body.password === 'string' ? body.password : ''
     const providedName = text(
-        body.username ?? body.name ?? body.fullName ?? body.full_name ?? body.memberName
+        body.identifier ??
+        body.email ??
+        body.username ??
+        body.name ??
+        body.fullName ??
+        body.full_name ??
+        body.memberName
     )
 
     if (!reference) {
@@ -159,7 +202,7 @@ export const loginUser = async (req, res) => {
 
     if (!password && !providedName) {
         return res.status(400).json({
-            message: 'Provide a password, or the username registered with this reference.',
+            message: 'Provide a password, or the username/email registered with this reference.',
         })
     }
 
@@ -171,6 +214,11 @@ export const loginUser = async (req, res) => {
 
     if (error) {
         console.error('loginUser:', error)
+
+        if (isMissingColumn(error)) {
+            return res.status(503).json({ message: SCHEMA_UPGRADE_MESSAGE })
+        }
+
         return res.status(500).json({
             message: 'Could not sign in.',
             detail: error.message,
@@ -198,6 +246,7 @@ export const loginUser = async (req, res) => {
     } else {
         const nameMatches =
             nameKey(providedName) === nameKey(data.username) ||
+            nameKey(providedName) === nameKey(data.email) ||
             nameKey(providedName) === nameKey(data.full_name)
 
         if (!nameMatches) {
@@ -234,6 +283,11 @@ export const getUserByReference = async (req, res) => {
 
     if (error) {
         console.error('getUserByReference:', error)
+
+        if (isMissingColumn(error)) {
+            return res.status(503).json({ message: SCHEMA_UPGRADE_MESSAGE })
+        }
+
         return res.status(500).json({
             message: 'Could not load the user.',
             detail: error.message,

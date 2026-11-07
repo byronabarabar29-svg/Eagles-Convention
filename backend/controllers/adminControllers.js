@@ -8,7 +8,7 @@ import {
 } from '../utils/orders.js'
 
 const USER_COLUMNS =
-    'id, full_name, username, contact_number, club_region, reference, created_at'
+    'id, full_name, username, email, contact_number, club_region, reference, created_at'
 const SHIRT_COLUMNS = 'id, user_id, size, name_on_shirt, qty, created_at'
 const PAYMENT_COLUMNS =
     'id, user_id, method, txn_ref, txn_date, amount, receipt_image, status, note, submitted_at, verified_at, verified_by, updated_at'
@@ -64,6 +64,7 @@ function toAdminUser(user, shirts, payment, { includeReceipt = false } = {}) {
         id: user.id,
         fullName: user.full_name,
         username: user.username,
+        email: user.email,
         contactNumber: user.contact_number,
         clubRegion: user.club_region,
         reference: prettyReference(user.reference),

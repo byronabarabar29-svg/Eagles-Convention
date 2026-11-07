@@ -37,6 +37,7 @@ function mergeMemberRecords(records) {
     if (!Array.isArray(records) || records.length === 0) return null;
     return records.reduce((merged, record) => ({
         fullName:      merged.fullName      ?? record.fullName      ?? null,
+        email:         merged.email         ?? record.email         ?? null,
         contactNumber: merged.contactNumber ?? record.contactNumber ?? null,
         clubRegion:    merged.clubRegion    ?? record.clubRegion    ?? null,
         registeredAt:  merged.registeredAt  ?? record.registeredAt  ?? null,
@@ -215,6 +216,7 @@ const welcomeAvatar    = $('welcomeAvatar');
 const welcomeFirstName = $('welcomeFirstName');
 const chipRegion       = $('chipRegion');
 const chipContact      = $('chipContact');
+const chipEmail        = $('chipEmail');
 const chipRegistered   = $('chipRegistered');
 const memberReference  = $('memberReference');
 const copyRefBtn       = $('copyRefBtn');
@@ -461,6 +463,10 @@ function renderMember(session, member) {
     welcomeAvatar.textContent    = initialsOf(name);
     chipRegion.textContent       = member?.clubRegion ?? session.clubRegion ?? '—';
     chipContact.textContent      = member?.contactNumber ?? session.contactNumber ?? '—';
+    if (chipEmail) {
+        chipEmail.textContent = member?.email ?? session.email ?? '—';
+        chipEmail.classList.toggle('is-hidden', !(member?.email ?? session.email));
+    }
     chipRegistered.textContent   = member?.registeredAt
         ? 'Registered ' + new Date(member.registeredAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
         : 'Registered —';
@@ -969,6 +975,7 @@ seedDemoBtn?.addEventListener('click', () => {
     const now = new Date().toISOString();
     const base = {
         fullName: 'Demo Member',
+        email: 'demo@example.com',
         contactNumber: '0917 000 0000',
         clubRegion: 'Region XI — Davao Region',
         registeredAt: now,

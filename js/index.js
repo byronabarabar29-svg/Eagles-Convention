@@ -1,7 +1,8 @@
 /* ═══════════════════════════════════════════════════════════
    3rd Eagles Mindanao Convention — Interactions
    Flow: Register Now → Registration dialog
-         → on submit → T-shirt dialog (ask → form → success)
+         → review details (edit or confirm)
+         → T-shirt dialog (ask → form → success)
    ═══════════════════════════════════════════════════════════ */
 
 const navToggle     = document.getElementById('navToggle');
@@ -10,8 +11,18 @@ const navbar        = document.getElementById('navbar');
 const footerYear    = document.getElementById('footerYear');
 const toastEl       = document.getElementById('toast');
 
-const registerDialog = document.getElementById('registerDialog');
-const registerForm   = document.getElementById('registerForm');
+const registerDialog      = document.getElementById('registerDialog');
+const registerForm        = document.getElementById('registerForm');
+const registerReviewPanel = document.getElementById('registerReviewPanel');
+const reviewEditBtn       = document.getElementById('reviewEditBtn');
+const reviewConfirmBtn    = document.getElementById('reviewConfirmBtn');
+const reviewFields        = {
+    fullName:      document.getElementById('reviewFullName'),
+    username:      document.getElementById('reviewUsername'),
+    email:         document.getElementById('reviewEmail'),
+    contactNumber: document.getElementById('reviewContactNumber'),
+    clubRegion:    document.getElementById('reviewClubRegion'),
+};
 
 const shirtDialog      = document.getElementById('shirtDialog');
 const shirtAskPanel    = document.getElementById('shirtAskPanel');
@@ -116,18 +127,29 @@ document.querySelectorAll('[data-close-dialog]').forEach(btn => {
 /* ── Registration state (shared between the two dialogs) ─── */
 let currentRegistration = null;
 
+/* ── Registration dialog: form ⇄ review panels ───────────── */
+function showRegisterPanel(panel) {
+    registerForm.classList.toggle('is-hidden', panel !== registerForm);
+    registerReviewPanel.classList.toggle('is-hidden', panel !== registerReviewPanel);
+}
+
 /* ── Open registration dialog from any .openRegisterForm ─── */
 document.querySelectorAll('.openRegisterForm').forEach(btn => {
     btn.addEventListener('click', () => {
         closeMobileMenu();
+        showRegisterPanel(registerForm);
         openDialog(registerDialog);
         // Focus the first field once the dialog is visible
         requestAnimationFrame(() => document.getElementById('fullName')?.focus());
     });
 });
 
+/* Always return to the form when the registration dialog closes */
+registerDialog.addEventListener('close', () => showRegisterPanel(registerForm));
+
 /* ── Validation helpers ──────────────────────────────────── */
 const PH_CONTACT = /^(09\d{9}|\+639\d{9}|0\d{6,10})$/; // PH mobile or landline-ish
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 function setFieldState(input, message) {
     const errorEl = input.closest('.form-field')?.querySelector('.field-error');
@@ -139,6 +161,7 @@ function setFieldState(input, message) {
 function validateRegistration() {
     const name     = document.getElementById('fullName');
     const username = document.getElementById('username');
+    const email    = document.getElementById('email');
     const contact  = document.getElementById('contactNumber');
     const region   = document.getElementById('clubRegion');
 
@@ -150,12 +173,16 @@ function validateRegistration() {
         /^[A-Za-z0-9._-]{2,32}$/.test(username.value.trim())
             ? ''
             : 'Use 2–32 letters, numbers, dots, underscores, or hyphens.');
+    const okEmail = setFieldState(email,
+        EMAIL.test(email.value.trim())
+            ? ''
+            : 'Enter a valid email address, e.g. juan@example.com.');
     const okContact = setFieldState(contact,
         PH_CONTACT.test(digits) ? '' : 'Enter a valid PH number, e.g. 09171234567.');
     const okRegion  = setFieldState(region,
         region.value ? '' : 'Please select your club region.');
 
-    return okName && okUsername && okContact && okRegion;
+    return okName && okUsername && okEmail && okContact && okRegion;
 }
 
 function validateShirt() {
@@ -220,26 +247,52 @@ function openShirtDialog() {
     openDialog(shirtDialog);
 }
 
-/* ── FLOW STEP 1 → 2: registration submit ────────────────── */
-const registerSubmitBtn = registerForm.querySelector('button[type="submit"]');
+/* ── FLOW STEP 1 → 2: registration form → review page ────── */
+function fillReviewPanel() {
+    reviewFields.fullName.textContent =
+        document.getElementById('fullName').value.trim();
+    reviewFields.username.textContent =
+        document.getElementById('username').value.trim();
+    reviewFields.email.textContent =
+        document.getElementById('email').value.trim();
+    reviewFields.contactNumber.textContent =
+        document.getElementById('contactNumber').value.trim();
+    reviewFields.clubRegion.textContent =
+        document.getElementById('clubRegion').value;
+}
 
-registerForm.addEventListener('submit', async (event) => {
+registerForm.addEventListener('submit', (event) => {
     event.preventDefault();
     if (!validateRegistration()) {
         showToast('Please fix the highlighted fields.');
         return;
     }
 
-    const usernameInput = document.getElementById('username');
-    const originalLabel = registerSubmitBtn.textContent;
+    fillReviewPanel();
+    showRegisterPanel(registerReviewPanel);
+    requestAnimationFrame(() => reviewEditBtn?.focus());
+});
 
-    registerSubmitBtn.disabled = true;
-    registerSubmitBtn.textContent = 'Registering…';
+/* Back to the form so the member can correct their details */
+reviewEditBtn.addEventListener('click', () => {
+    showRegisterPanel(registerForm);
+    requestAnimationFrame(() => document.getElementById('fullName')?.focus());
+});
+
+/* ── FLOW STEP 2 → 3: confirmed on the review page ───────── */
+reviewConfirmBtn.addEventListener('click', async () => {
+    const usernameInput = document.getElementById('username');
+    const emailInput    = document.getElementById('email');
+    const originalLabel = reviewConfirmBtn.textContent;
+
+    reviewConfirmBtn.disabled = true;
+    reviewConfirmBtn.textContent = 'Registering…';
 
     try {
         const result = await api.register({
             fullName:      document.getElementById('fullName').value.trim(),
             username:      usernameInput.value.trim(),
+            email:         emailInput.value.trim(),
             contactNumber: document.getElementById('contactNumber').value.trim(),
             clubRegion:    document.getElementById('clubRegion').value,
         });
@@ -249,10 +302,12 @@ registerForm.addEventListener('submit', async (event) => {
         currentRegistration = {
             fullName:      user.fullName,
             username:      user.username,
+            email:         user.email ?? emailInput.value.trim(),
             contactNumber: user.contactNumber,
             clubRegion:    user.clubRegion,
             registeredAt:  user.createdAt,
             reference:     user.reference, // issued by the server
+            emailSent:     Boolean(result.emailSent),
             tshirt:        null,
         };
 
@@ -260,19 +315,26 @@ registerForm.addEventListener('submit', async (event) => {
 
         closeDialog(registerDialog);
         registerForm.reset();
+        showRegisterPanel(registerForm);
         showToast(`Welcome aboard, ${currentRegistration.fullName.split(' ')[0]}! One more step…`);
         openShirtDialog();
     } catch (err) {
         console.error('Registration failed:', err);
 
         if (err.status === 409) {
-            setFieldState(usernameInput, err.message);
+            // Send the member back to the field that needs fixing.
+            if (/email/i.test(err.message ?? '')) {
+                setFieldState(emailInput, err.message);
+            } else {
+                setFieldState(usernameInput, err.message);
+            }
+            showRegisterPanel(registerForm);
         }
 
         showToast(err.message || 'Registration failed. Please try again.');
     } finally {
-        registerSubmitBtn.disabled = false;
-        registerSubmitBtn.textContent = originalLabel;
+        reviewConfirmBtn.disabled = false;
+        reviewConfirmBtn.textContent = originalLabel;
     }
 });
 
@@ -285,8 +347,17 @@ function showSuccessPanel(message) {
     showShirtPanel(shirtSuccessPanel);
 }
 
+/** Mention the confirmation email only when the server actually sent one. */
+function withEmailConfirmation(message) {
+    const email = currentRegistration?.email;
+    if (!currentRegistration?.emailSent || !email) return message;
+    return `${message} A confirmation email was sent to ${email}.`;
+}
+
 shirtDeclineBtn.addEventListener('click', () => {
-    showSuccessPanel('Your registration has been recorded. Save your reference number — you will use it with your username to log in.');
+    showSuccessPanel(withEmailConfirmation(
+        'Your registration has been recorded. Save your reference number — you will use it with your username or email to log in.'
+    ));
     showToast('See you at the convention!');
 });
 
@@ -342,8 +413,9 @@ shirtForm.addEventListener('submit', async (event) => {
         });
 
         referenceNumber.textContent = currentRegistration.reference;
-        if (successMessage) successMessage.textContent =
-            'Your registration and t-shirt reservation have been recorded. Save your reference number — you will use it with your username to log in.';
+        if (successMessage) successMessage.textContent = withEmailConfirmation(
+            'Your registration and t-shirt reservation have been recorded. Save your reference number — you will use it with your username or email to log in.'
+        );
 
         shirtForm.reset();
         document.getElementById('shirtQty').value = 1;

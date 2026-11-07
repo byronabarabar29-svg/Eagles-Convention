@@ -1,9 +1,9 @@
 /* ═══════════════════════════════════════════════════════════
    3rd Eagles Mindanao Convention — Member Login
    Signs in through the Express + Supabase API using the
-   username and reference number issued at registration, then
-   caches the member's profile and shirts locally so the
-   dashboard can render instantly.
+   username (or email) and reference number issued at
+   registration, then caches the member's profile and shirts
+   locally so the dashboard can render instantly.
 
    Reference format (issued at registration):
        EMC-<BASE36-TIMESTAMP>-<4 RANDOM BASE36 CHARS>
@@ -54,6 +54,7 @@ async function syncMemberCache(user) {
     const base = {
         fullName:      user.fullName,
         username:      user.username,
+        email:         user.email,
         contactNumber: user.contactNumber,
         clubRegion:    user.clubRegion,
         registeredAt:  user.createdAt,
@@ -141,10 +142,15 @@ loginForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     hideError();
 
-    const username = nameInput.value.trim();
+    const identifier = nameInput.value.trim();
+    const looksLikeEmail = identifier.includes('@');
 
     const nameOk = setFieldState(nameInput,
-        username.length >= 2 ? '' : 'Please enter your username.');
+        looksLikeEmail
+            ? (/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(identifier)
+                ? ''
+                : 'Enter a valid email address, e.g. juan@example.com.')
+            : (identifier.length >= 2 ? '' : 'Please enter your username or email.'));
 
     const compareKey = refCompareKey(refInput.value);
     const refOk = setFieldState(refInput,
@@ -163,7 +169,7 @@ loginForm.addEventListener('submit', async (event) => {
             method: 'POST',
             body: {
                 reference: refInput.value,
-                username,
+                identifier,
             },
         });
 
@@ -175,6 +181,7 @@ loginForm.addEventListener('submit', async (event) => {
                 refKey:        refCompareKey(user.reference),
                 reference:     user.reference,
                 username:      user.username,
+                email:         user.email,
                 fullName:      user.fullName,
                 clubRegion:    user.clubRegion,
                 contactNumber: user.contactNumber,
@@ -189,7 +196,7 @@ loginForm.addEventListener('submit', async (event) => {
         console.error('Login failed:', err);
 
         if (err.status === 401) {
-            showError('The username and reference number do not match our records.');
+            showError('The username/email and reference number do not match our records.');
         } else {
             showError(err.message || 'Could not sign in. Please try again.');
         }

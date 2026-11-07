@@ -8,6 +8,7 @@ import { paymentRoutes } from './routes/paymentRoutes.js'
 import { shirtRoutes } from './routes/shirtRoutes.js'
 import { userRoutes } from './routes/userRoutes.js'
 import { ensureSchema } from './sql/ensureSchema.js'
+import { mailerStatus } from './utils/mailer.js'
 
 const app = express()
 const port = Number(process.env.PORT) || 3000
@@ -52,6 +53,14 @@ const db = await ensureSchema()
 
 app.listen(port, () => {
     console.log(`Server is running at http://localhost:${port}`)
+
+    const mail = mailerStatus()
+    console.log(
+        mail.configured
+            ? `[mail] Registration emails enabled via ${mail.provider}.`
+            : '[mail] Registration emails disabled — set RESEND_API_KEY or SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS in .env.'
+    )
+
     if (!db.ok) {
         console.warn(
             'Server started, but the database may be incomplete. See the [db] messages above.'

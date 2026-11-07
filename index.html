@@ -152,7 +152,7 @@
         <form class="dialog-form" id="registerForm" novalidate>
             <div class="dialog-header">
                 <div>
-                    <span class="dialog-eyebrow">Step 1 of 2</span>
+                    <span class="dialog-eyebrow">Step 1 of 3</span>
                     <h2 class="dialog-title" id="registerDialogTitle">Register Now</h2>
                 </div>
                 <button type="button" class="dialog-close" data-close-dialog aria-label="Close dialog">&times;</button>
@@ -171,6 +171,14 @@
                        autocomplete="username" spellcheck="false" required minlength="2" maxlength="32">
                 <p class="field-hint">Used to sign in. Letters, numbers, dots, underscores, or hyphens.</p>
                 <p class="field-error" data-error-for="username" role="alert"></p>
+            </div>
+
+            <div class="form-field">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" placeholder="juan@example.com"
+                       autocomplete="email" spellcheck="false" required>
+                <p class="field-hint">You can use this email or your username to sign in.</p>
+                <p class="field-error" data-error-for="email" role="alert"></p>
             </div>
 
             <div class="form-field">
@@ -198,9 +206,50 @@
 
             <div class="dialog-footer">
                 <button type="button" class="btn btn-ghost" data-close-dialog>Cancel</button>
-                <button type="submit" class="btn btn-primary">Register</button>
+                <button type="submit" class="btn btn-primary">Review Details</button>
             </div>
         </form>
+
+        <!-- Step B: review the details before creating the account -->
+        <div class="dialog-panel is-hidden" id="registerReviewPanel">
+            <div class="dialog-header">
+                <div>
+                    <span class="dialog-eyebrow">Step 2 of 3</span>
+                    <h2 class="dialog-title">Review your details</h2>
+                </div>
+                <button type="button" class="dialog-close" data-close-dialog aria-label="Close dialog">&times;</button>
+            </div>
+
+            <p class="review-lead">Please check your information. You can edit anything before your registration is created.</p>
+
+            <dl class="review-list">
+                <div class="review-item">
+                    <dt>Full Name</dt>
+                    <dd id="reviewFullName">—</dd>
+                </div>
+                <div class="review-item">
+                    <dt>Username</dt>
+                    <dd id="reviewUsername">—</dd>
+                </div>
+                <div class="review-item">
+                    <dt>Email Address</dt>
+                    <dd id="reviewEmail">—</dd>
+                </div>
+                <div class="review-item">
+                    <dt>Contact Number</dt>
+                    <dd id="reviewContactNumber">—</dd>
+                </div>
+                <div class="review-item">
+                    <dt>Club Region</dt>
+                    <dd id="reviewClubRegion">—</dd>
+                </div>
+            </dl>
+
+            <div class="dialog-footer">
+                <button type="button" class="btn btn-ghost" id="reviewEditBtn">Edit details</button>
+                <button type="button" class="btn btn-primary" id="reviewConfirmBtn">Confirm &amp; Register</button>
+            </div>
+        </div>
     </dialog>
 
     <!-- ══════════ DIALOG 2: T-SHIRT REGISTRATION ══════════ -->
@@ -210,7 +259,7 @@
         <div class="dialog-panel" id="shirtAskPanel">
             <div class="dialog-header">
                 <div>
-                    <span class="dialog-eyebrow">Step 2 of 2</span>
+                    <span class="dialog-eyebrow">Step 3 of 3</span>
                     <h2 class="dialog-title" id="shirtDialogTitle">Convention T-Shirt</h2>
                 </div>
                 <button type="button" class="dialog-close" data-close-dialog aria-label="Close dialog">&times;</button>
@@ -232,14 +281,14 @@
         <form class="dialog-form is-hidden" id="shirtForm" novalidate>
             <div class="dialog-header">
                 <div>
-                    <span class="dialog-eyebrow">Step 2 of 2 — T-Shirt</span>
+                    <span class="dialog-eyebrow">Step 3 of 3 — T-Shirt</span>
                     <h2 class="dialog-title">Shirt Details</h2>
                 </div>
                 <button type="button" class="dialog-close" data-close-dialog aria-label="Close dialog">&times;</button>
             </div>
 
             <div class="form-field">
-                <label for="shirtName">Name in Shirt</label>
+                <label for="shirtName" id="labelText">Name in Shirt</label>
                 <input type="text" id="shirtName" name="shirtName" placeholder="Name to print on your shirt"
                        autocomplete="off" maxlength="40" required>
                 <p class="field-hint">This is the name that will be printed on the shirt. A nickname is fine.</p>
@@ -247,7 +296,7 @@
             </div>
 
             <div class="form-field">
-                <label for="shirtSize">Shirt Size</label>
+                <label for="shirtSize" id="labelText">Shirt Size</label>
                 <select id="shirtSize" name="shirtSize" required>
                     <option value="" selected disabled>Select a size…</option>
                     <option value="XS">XS</option>

@@ -10,6 +10,7 @@ create table if not exists public.users (
     id              uuid primary key default gen_random_uuid(),
     full_name       text not null,
     username        text,          -- used for login, unique when present
+    email           text,          -- used for login, unique when present
     contact_number  text not null,
     club_region     text not null,
     reference       text not null unique
@@ -20,6 +21,7 @@ create table if not exists public.users (
 
 -- Safe upgrades if an earlier version of this file was already run.
 alter table public.users add column if not exists username text;
+alter table public.users add column if not exists email text;
 alter table public.users alter column password_hash drop not null;
 
 create table if not exists public.shirts (
@@ -73,6 +75,11 @@ alter table public.payments add column if not exists updated_at timestamptz not 
 create unique index if not exists users_username_lower_idx
     on public.users (lower(username))
     where username is not null;
+
+-- Emails are unique regardless of capitalization.
+create unique index if not exists users_email_lower_idx
+    on public.users (lower(email))
+    where email is not null;
 
 -- RLS is enabled so the tables are not readable with the public key.
 -- The backend's secret/service-role key bypasses these policies.

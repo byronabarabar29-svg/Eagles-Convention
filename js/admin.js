@@ -377,6 +377,7 @@
             return [
                 user.fullName,
                 user.username,
+                user.email,
                 user.reference,
                 user.rawReference,
                 user.contactNumber,
@@ -888,6 +889,10 @@
                 <div class="review-meta">
                     <span class="review-meta-label">Contact</span>
                     <span class="review-meta-value">${escapeHtml(user.contactNumber ?? '—')}</span>
+                </div>
+                <div class="review-meta">
+                    <span class="review-meta-label">Email</span>
+                    <span class="review-meta-value">${escapeHtml(user.email ?? '—')}</span>
                 </div>
                 <div class="review-meta">
                     <span class="review-meta-label">Region</span>
