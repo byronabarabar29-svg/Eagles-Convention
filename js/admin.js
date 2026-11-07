@@ -404,13 +404,14 @@
             <tr>
                 <td>${memberCell(user.fullName, user.username ? `@${user.username}` : 'No username')}</td>
                 <td><span class="ref-code">${escapeHtml(user.reference)}</span></td>
+                <td class="email-cell">${escapeHtml(user.email ?? '—')}</td>
                 <td class="nowrap">${escapeHtml(user.contactNumber ?? '—')}</td>
                 <td>${escapeHtml(user.clubRegion ?? '—')}</td>
                 <td class="col-qty">${user.orderCount}</td>
                 <td class="col-total nowrap">${money(user.ordersTotal)}</td>
                 <td>${statusPill(user.status)}</td>
                 <td class="col-actions">
-                    <button type="button" class="admin-link" data-review="${escapeHtml(user.rawReference)}">Review</button>
+                    <button type="button" class="admin-link" data-review="${escapeHtml(user.rawReference)}">View details</button>
                 </td>
             </tr>`).join('');
     }
@@ -885,32 +886,49 @@
                 </div>
             </div>
 
-            <div class="review-grid">
-                <div class="review-meta">
-                    <span class="review-meta-label">Contact</span>
-                    <span class="review-meta-value">${escapeHtml(user.contactNumber ?? '—')}</span>
+            <section class="review-section" aria-labelledby="reviewProfileTitle">
+                <div class="review-section-head">
+                    <h3 id="reviewProfileTitle">Registration details</h3>
                 </div>
-                <div class="review-meta">
-                    <span class="review-meta-label">Email</span>
-                    <span class="review-meta-value">${escapeHtml(user.email ?? '—')}</span>
+                <div class="review-grid">
+                    <div class="review-meta">
+                        <span class="review-meta-label">Full name</span>
+                        <span class="review-meta-value">${escapeHtml(user.fullName ?? '—')}</span>
+                    </div>
+                    <div class="review-meta">
+                        <span class="review-meta-label">Username</span>
+                        <span class="review-meta-value">${user.username ? `@${escapeHtml(user.username)}` : '—'}</span>
+                    </div>
+                    <div class="review-meta">
+                        <span class="review-meta-label">Email</span>
+                        <span class="review-meta-value">${escapeHtml(user.email ?? '—')}</span>
+                    </div>
+                    <div class="review-meta">
+                        <span class="review-meta-label">Contact number</span>
+                        <span class="review-meta-value">${escapeHtml(user.contactNumber ?? '—')}</span>
+                    </div>
+                    <div class="review-meta">
+                        <span class="review-meta-label">Club region</span>
+                        <span class="review-meta-value">${escapeHtml(user.clubRegion ?? '—')}</span>
+                    </div>
+                    <div class="review-meta">
+                        <span class="review-meta-label">Reference</span>
+                        <span class="review-meta-value mono">${escapeHtml(user.reference)}</span>
+                    </div>
+                    <div class="review-meta">
+                        <span class="review-meta-label">Registered</span>
+                        <span class="review-meta-value">${formatDate(user.createdAt)}</span>
+                    </div>
+                    <div class="review-meta">
+                        <span class="review-meta-label">Orders</span>
+                        <span class="review-meta-value">${user.orderCount}</span>
+                    </div>
+                    <div class="review-meta">
+                        <span class="review-meta-label">Order total</span>
+                        <span class="review-meta-value">${money(user.ordersTotal)}</span>
+                    </div>
                 </div>
-                <div class="review-meta">
-                    <span class="review-meta-label">Region</span>
-                    <span class="review-meta-value">${escapeHtml(user.clubRegion ?? '—')}</span>
-                </div>
-                <div class="review-meta">
-                    <span class="review-meta-label">Registered</span>
-                    <span class="review-meta-value">${formatDate(user.createdAt)}</span>
-                </div>
-                <div class="review-meta">
-                    <span class="review-meta-label">Orders</span>
-                    <span class="review-meta-value">${user.orderCount}</span>
-                </div>
-                <div class="review-meta">
-                    <span class="review-meta-label">Order total</span>
-                    <span class="review-meta-value">${money(user.ordersTotal)}</span>
-                </div>
-            </div>
+            </section>
 
             <section class="review-section" aria-labelledby="reviewOrdersTitle">
                 <div class="review-section-head">

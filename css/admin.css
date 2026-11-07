@@ -411,6 +411,7 @@ body {
 .admin-table tbody tr:hover { background: rgba(212, 160, 23, 0.07); }
 .col-qty, .col-total { text-align: right; }
 .col-actions { text-align: right; width: 1%; white-space: nowrap; }
+.email-cell { max-width: 220px; overflow-wrap: anywhere; }
 
 .member-cell { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
 .member-avatar {
