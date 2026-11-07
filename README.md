@@ -10,8 +10,13 @@ Base URL during development: `http://localhost:3000`
    SUPABASE_URL="your_Url"
    SUPABASE_PUBLISHABLE_KEY="your key"
    SUPABASE_SECRET_KEY="your key"
+<<<<<<< HEAD
    ADMIN_KEY="a-long-random-value"
    ```
+=======
+   SUPABASE_JWKS_URL="your url"
+   ADMIN_KEY="planned password"
+>>>>>>> d89b0fc0d15e681fb93bee25600ba39193a301fe
 
 2. Start the database:
 
